@@ -2,74 +2,85 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-
-const navItems = [
-    { name: "Dashboard", href: "/", icon: "🏠" },
-    { name: "AI Assistant", href: "/ai", icon: "✨" },
-    { name: "Notes", href: "/notes", icon: "📝" },
-    { name: "Calculator", href: "/calculator", icon: "🧮" },
-    { name: "Wellbeing", href: "/wellbeing", icon: "🧘" },
-    { name: "Settings", href: "/settings", icon: "⚙️" },
-];
+import { LayoutDashboard, Brain, StickyNote, Calculator, Activity, Settings, LogOut } from "lucide-react";
+import { signOut } from "next-auth/react";
 
 export default function Sidebar() {
-    const pathname = usePathname();
+  const pathname = usePathname();
 
-    return (
-        <aside className="sidebar glass-panel">
-            <div className="logo-container">
-                <h1 className="logo text-gradient">Life OS</h1>
-            </div>
+  const links = [
+    { href: "/dashboard", label: "Dashboard", icon: <LayoutDashboard size={20} /> },
+    { href: "/ai", label: "AI Assistant", icon: <Brain size={20} /> },
+    { href: "/notes", label: "Notes", icon: <StickyNote size={20} /> },
+    { href: "/calculator", label: "Calculator", icon: <Calculator size={20} /> },
+    { href: "/wellbeing", label: "Wellbeing", icon: <Activity size={20} /> },
+    { href: "/settings", label: "Settings", icon: <Settings size={20} /> },
+  ];
 
-            <nav className="nav-menu">
-                {navItems.map((item) => {
-                    const isActive = pathname === item.href;
-                    return (
-                        <Link
-                            key={item.href}
-                            href={item.href}
-                            className={`nav-item ${isActive ? "active" : ""}`}
-                        >
-                            <span className="nav-icon">{item.icon}</span>
-                            <span className="nav-label">{item.name}</span>
-                            {isActive && <div className="active-indicator" />}
-                        </Link>
-                    );
-                })}
-            </nav>
+  return (
+    <aside className="sidebar glass-panel">
+      <div className="logo">
+        <div className="logo-icon">L</div>
+        <span>Life OS</span>
+      </div>
 
-            <div className="user-profile">
-                <div className="avatar">M</div>
-                <div className="user-info">
-                    <p className="user-name">Mrinal</p>
-                    <p className="user-role">Pro User</p>
-                </div>
-            </div>
+      <nav className="nav-links">
+        {links.map((link) => {
+          const isActive = pathname === link.href;
+          return (
+            <Link
+              key={link.href}
+              href={link.href}
+              className={`nav-item ${isActive ? "active" : ""}`}
+            >
+              <span className="icon">{link.icon}</span>
+              <span className="label">{link.label}</span>
+              {isActive && <div className="active-indicator" />}
+            </Link>
+          );
+        })}
+      </nav>
 
-            <style jsx>{`
+      <div className="user-profile">
+        <button onClick={() => signOut({ callbackUrl: '/' })} className="logout-btn">
+          <LogOut size={18} />
+          <span>Sign Out</span>
+        </button>
+      </div>
+
+      <style jsx>{`
         .sidebar {
-          width: var(--sidebar-width);
-          height: calc(100vh - 40px);
-          position: fixed;
-          left: 20px;
-          top: 20px;
+          width: 260px;
+          height: 100vh;
+          padding: 30px 20px;
           display: flex;
           flex-direction: column;
-          padding: 24px;
-          z-index: 100;
-        }
-
-        .logo-container {
-          margin-bottom: 40px;
-          padding: 0 12px;
+          border-right: 1px solid var(--glass-border);
+          background: rgba(0, 0, 0, 0.2);
         }
 
         .logo {
-          font-size: 24px;
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          font-size: 20px;
           font-weight: 700;
+          margin-bottom: 40px;
+          padding-left: 10px;
         }
 
-        .nav-menu {
+        .logo-icon {
+          width: 32px;
+          height: 32px;
+          background: var(--accent-gradient);
+          border-radius: 8px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 16px;
+        }
+
+        .nav-links {
           display: flex;
           flex-direction: column;
           gap: 8px;
@@ -81,82 +92,56 @@ export default function Sidebar() {
           align-items: center;
           gap: 12px;
           padding: 12px 16px;
-          border-radius: var(--radius-md);
+          border-radius: 12px;
           color: var(--fg-secondary);
-          transition: all 0.3s ease;
+          transition: all 0.3s;
           position: relative;
-          overflow: hidden;
         }
 
         .nav-item:hover {
-          color: var(--fg-primary);
-          background: rgba(255, 255, 255, 0.03);
+          background: rgba(255, 255, 255, 0.05);
+          color: white;
         }
 
         .nav-item.active {
+          background: rgba(255, 255, 255, 0.1);
           color: white;
-          background: rgba(99, 102, 241, 0.1);
         }
 
         .active-indicator {
           position: absolute;
-          left: 0;
+          right: 0;
           top: 50%;
           transform: translateY(-50%);
           width: 3px;
           height: 20px;
-          background: var(--accent-gradient);
-          border-radius: 0 4px 4px 0;
-          box-shadow: var(--accent-glow);
-        }
-
-        .nav-icon {
-          font-size: 20px;
-        }
-
-        .nav-label {
-          font-weight: 500;
-          font-size: 15px;
+          background: var(--accent-primary);
+          border-radius: 3px 0 0 3px;
+          box-shadow: 0 0 10px var(--accent-primary);
         }
 
         .user-profile {
+          padding-top: 20px;
+          border-top: 1px solid var(--glass-border);
+        }
+
+        .logout-btn {
           display: flex;
           align-items: center;
-          gap: 12px;
-          padding: 16px;
-          background: rgba(255, 255, 255, 0.03);
-          border-radius: var(--radius-md);
-          margin-top: auto;
-        }
-
-        .avatar {
-          width: 40px;
-          height: 40px;
-          border-radius: 50%;
-          background: var(--accent-gradient);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          font-weight: 700;
-          color: white;
-        }
-
-        .user-info {
-          display: flex;
-          flex-direction: column;
-        }
-
-        .user-name {
-          font-size: 14px;
-          font-weight: 600;
-          color: var(--fg-primary);
-        }
-
-        .user-role {
-          font-size: 12px;
+          gap: 10px;
+          width: 100%;
+          padding: 12px;
+          background: transparent;
+          border: none;
           color: var(--fg-secondary);
+          cursor: pointer;
+          transition: color 0.2s;
+        }
+
+        .logout-btn:hover {
+          color: #ef4444;
         }
       `}</style>
-        </aside>
-    );
+    </aside>
+  );
 }

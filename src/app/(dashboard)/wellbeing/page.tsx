@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from "react";
 import Header from "@/components/Header";
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { Activity, Clock, Zap } from "lucide-react";
 
 interface Log {
   id: string;
@@ -16,16 +18,10 @@ export default function WellbeingPage() {
 
   useEffect(() => {
     fetchLogs();
-
-    // Session timer
-    const timer = setInterval(() => {
-      setSessionTime(prev => prev + 1);
-    }, 60000); // Update every minute
-
+    const timer = setInterval(() => setSessionTime(prev => prev + 1), 60000);
     return () => clearInterval(timer);
   }, []);
 
-  // Save session on unmount or when focus mode stops
   useEffect(() => {
     const handleSave = async () => {
       if (sessionTime > 0) {
@@ -36,11 +32,7 @@ export default function WellbeingPage() {
         });
       }
     };
-
-    // Save every 5 mins
-    if (sessionTime > 0 && sessionTime % 5 === 0) {
-      handleSave();
-    }
+    if (sessionTime > 0 && sessionTime % 5 === 0) handleSave();
   }, [sessionTime]);
 
   const fetchLogs = async () => {
@@ -60,15 +52,26 @@ export default function WellbeingPage() {
     }
   };
 
-  // Calculate stats
   const totalTime = logs.reduce((acc, log) => acc + log.duration, 0) + sessionTime;
   const todayTime = logs
     .filter(l => new Date(l.date).toDateString() === new Date().toDateString())
     .reduce((acc, log) => acc + log.duration, 0) + sessionTime;
 
-  // Mock data for chart if empty
-  const chartData = logs.length > 0 ? logs.slice(0, 7).map(l => l.duration) : [30, 45, 60, 20, 90, 45, 60];
-  const maxVal = Math.max(...chartData, 100);
+  // Prepare data for Recharts
+  const chartData = logs.length > 0
+    ? logs.slice(0, 7).map(l => ({
+      name: new Date(l.date).toLocaleDateString('en-US', { weekday: 'short' }),
+      minutes: l.duration
+    })).reverse()
+    : [
+      { name: 'Mon', minutes: 30 },
+      { name: 'Tue', minutes: 45 },
+      { name: 'Wed', minutes: 60 },
+      { name: 'Thu', minutes: 20 },
+      { name: 'Fri', minutes: 90 },
+      { name: 'Sat', minutes: 45 },
+      { name: 'Sun', minutes: 60 },
+    ];
 
   return (
     <div className="wellbeing-page">
@@ -76,14 +79,17 @@ export default function WellbeingPage() {
 
       <div className="stats-grid animate-slide-up">
         <div className="stat-card glass-panel">
+          <div className="stat-icon"><Clock size={20} /></div>
           <h3>Today's Focus</h3>
           <div className="stat-value">{todayTime} <span className="unit">min</span></div>
         </div>
         <div className="stat-card glass-panel delay-100">
+          <div className="stat-icon"><Activity size={20} /></div>
           <h3>Total Sessions</h3>
           <div className="stat-value">{logs.length}</div>
         </div>
         <div className="stat-card glass-panel delay-200">
+          <div className="stat-icon"><Zap size={20} /></div>
           <h3>Avg. Session</h3>
           <div className="stat-value">{logs.length ? Math.round(totalTime / logs.length) : 0} <span className="unit">min</span></div>
         </div>
@@ -91,16 +97,43 @@ export default function WellbeingPage() {
 
       <div className="chart-section glass-panel animate-slide-up delay-300">
         <h3>Weekly Activity</h3>
-        <div className="bar-chart">
-          {chartData.map((val, i) => (
-            <div key={i} className="bar-col">
-              <div
-                className="bar"
-                style={{ height: `${(val / maxVal) * 100}%` }}
-              ></div>
-              <span className="label">Day {i + 1}</span>
-            </div>
-          ))}
+        <div className="chart-container">
+          <ResponsiveContainer width="100%" height="100%">
+            <AreaChart data={chartData}>
+              <defs>
+                <linearGradient id="colorMinutes" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#818cf8" stopOpacity={0.8} />
+                  <stop offset="95%" stopColor="#818cf8" stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" vertical={false} />
+              <XAxis
+                dataKey="name"
+                stroke="rgba(255,255,255,0.5)"
+                tick={{ fill: 'rgba(255,255,255,0.5)', fontSize: 12 }}
+                axisLine={false}
+                tickLine={false}
+              />
+              <YAxis
+                stroke="rgba(255,255,255,0.5)"
+                tick={{ fill: 'rgba(255,255,255,0.5)', fontSize: 12 }}
+                axisLine={false}
+                tickLine={false}
+              />
+              <Tooltip
+                contentStyle={{ background: 'rgba(0,0,0,0.8)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px' }}
+                itemStyle={{ color: '#fff' }}
+              />
+              <Area
+                type="monotone"
+                dataKey="minutes"
+                stroke="#818cf8"
+                strokeWidth={3}
+                fillOpacity={1}
+                fill="url(#colorMinutes)"
+              />
+            </AreaChart>
+          </ResponsiveContainer>
         </div>
       </div>
 
@@ -126,7 +159,16 @@ export default function WellbeingPage() {
 
         .stat-card {
           padding: 24px;
-          text-align: center;
+          position: relative;
+          overflow: hidden;
+        }
+
+        .stat-icon {
+          position: absolute;
+          top: 20px;
+          right: 20px;
+          color: var(--accent-primary);
+          opacity: 0.5;
         }
 
         .stat-card h3 {
@@ -152,38 +194,15 @@ export default function WellbeingPage() {
         .chart-section {
           padding: 30px;
           margin-bottom: 30px;
-        }
-
-        .bar-chart {
-          height: 200px;
-          display: flex;
-          align-items: flex-end;
-          justify-content: space-between;
-          margin-top: 30px;
-          padding-top: 20px;
-          border-top: 1px solid var(--glass-border);
-        }
-
-        .bar-col {
+          height: 400px;
           display: flex;
           flex-direction: column;
-          align-items: center;
-          gap: 10px;
+        }
+
+        .chart-container {
           flex: 1;
-        }
-
-        .bar {
-          width: 40%;
-          background: var(--accent-gradient);
-          border-radius: 4px;
-          transition: height 1s cubic-bezier(0.4, 0, 0.2, 1);
-          min-height: 4px;
-          box-shadow: 0 0 15px rgba(99, 102, 241, 0.3);
-        }
-
-        .label {
-          font-size: 12px;
-          color: var(--fg-secondary);
+          width: 100%;
+          margin-top: 20px;
         }
 
         .focus-section {
