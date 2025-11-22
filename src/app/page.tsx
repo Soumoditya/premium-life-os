@@ -5,96 +5,82 @@ import { motion } from "framer-motion";
 import { ArrowRight, Sparkles, Shield, Zap, Brain } from "lucide-react";
 
 export default function LandingPage() {
-    return (
-        <div className="landing-page">
-            {/* Navigation */}
-            <nav className="nav glass-panel">
-                <div className="logo">
-                    <div className="logo-icon">
-                        <Sparkles size={20} color="white" />
-                    </div>
-                    <span className="logo-text">Life OS</span>
-                </div>
-                <div className="nav-links">
-                    <Link href="/login" className="btn-text">Sign In</Link>
-                    <Link href="/signup" className="btn-primary">Get Started</Link>
-                </div>
-            </nav>
+  return (
+    <div className="landing-page">
+      {/* Navigation */}
+      <nav className="nav glass-panel">
+        <div className="logo">
+          <div className="logo-icon">
+            <Sparkles size={20} color="white" />
+          </div>
+          <span className="logo-text">Life OS</span>
+        </div>
+        <div className="nav-links">
+          <Link href="/login" className="btn-text">Sign In</Link>
+          <Link href="/signup" className="btn-primary">Get Started</Link>
+        </div>
+      </nav>
 
-            {/* Hero Section */}
-            <section className="hero">
-                <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.8 }}
-                    className="hero-content"
-                >
-                    <div className="badge">
-                        <span className="badge-dot"></span>
-                        v2.0 Now Available
-                    </div>
-                    <h1>
-                        Organize your life <br />
-                        <span className="text-gradient">with Intelligence.</span>
-                    </h1>
-                    <p className="hero-desc">
-                        The all-in-one workspace for your notes, wellbeing, and AI-powered productivity.
-                        Experience the future of personal organization.
-                    </p>
-                    <div className="cta-group">
-                        <Link href="/signup" className="btn-primary large">
-                            Start for Free <ArrowRight size={20} />
-                        </Link>
-                        <Link href="/login" className="btn-secondary large">
-                            Live Demo
-                        </Link>
-                    </div>
-                </motion.div>
+      {/* Hero Section */}
+      <section className="hero">
+        <motion.div
+          The all-in-one workspace for your notes, wellbeing, and AI-powered productivity.
+        Experience the future of personal organization.
+      </p>
+      <div className="cta-group">
+        <Link href="/signup" className="btn-primary large">
+          Start for Free <ArrowRight size={20} />
+        </Link>
+        <Link href="/login" className="btn-secondary large">
+          Live Demo
+        </Link>
+      </div>
+    </motion.div>
 
-                {/* Floating UI Elements (Decorative) */}
-                <motion.div
-                    initial={{ opacity: 0, scale: 0.8 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ delay: 0.4, duration: 0.8 }}
-                    className="hero-visual"
-                >
-                    <div className="app-preview glass-panel">
-                        <div className="preview-header">
-                            <div className="dots">
-                                <span></span><span></span><span></span>
-                            </div>
-                        </div>
-                        <div className="preview-content">
-                            <div className="preview-sidebar"></div>
-                            <div className="preview-main">
-                                <div className="preview-card"></div>
-                                <div className="preview-row">
-                                    <div className="preview-box"></div>
-                                    <div className="preview-box"></div>
-                                </div>
-                            </div>
-                        </div>
-                        {/* Floating Icons */}
-                        <motion.div
-                            animate={{ y: [0, -10, 0] }}
-                            transition={{ repeat: Infinity, duration: 4 }}
-                            className="float-icon icon-1"
-                        >
-                            <Brain size={24} />
-                        </motion.div>
-                        <motion.div
-                            animate={{ y: [0, 10, 0] }}
-                            transition={{ repeat: Infinity, duration: 5, delay: 1 }}
-                            className="float-icon icon-2"
-                        >
-                            <Zap size={24} />
-                        </motion.div>
-                    </div>
-                </motion.div>
-            </section>
+                {/* Floating UI Elements (Decorative) */ }
+  <motion.div
+    initial={{ opacity: 0, scale: 0.8 }}
+    animate={{ opacity: 1, scale: 1 }}
+    transition={{ delay: 0.4, duration: 0.8 }}
+    className="hero-visual"
+  >
+    <div className="app-preview glass-panel">
+      <div className="preview-header">
+        <div className="dots">
+          <span></span><span></span><span></span>
+        </div>
+      </div>
+      <div className="preview-content">
+        <div className="preview-sidebar"></div>
+        <div className="preview-main">
+          <div className="preview-card"></div>
+          <div className="preview-row">
+            <div className="preview-box"></div>
+            <div className="preview-box"></div>
+          </div>
+        </div>
+      </div>
+      {/* Floating Icons */}
+      <motion.div
+        animate={{ y: [0, -10, 0] }}
+        transition={{ repeat: Infinity, duration: 4 }}
+        className="float-icon icon-1"
+      >
+        <Brain size={24} />
+      </motion.div>
+      <motion.div
+        animate={{ y: [0, 10, 0] }}
+        transition={{ repeat: Infinity, duration: 5, delay: 1 }}
+        className="float-icon icon-2"
+      >
+        <Zap size={24} />
+      </motion.div>
+    </div>
+  </motion.div>
+            </section >
 
-            {/* Features Grid */}
-            <section className="features">
+    {/* Features Grid */ }
+    < section className = "features" >
                 <div className="feature-card glass-panel">
                     <div className="icon-box"><Brain size={24} /></div>
                     <h3>AI Assistant</h3>
@@ -110,9 +96,9 @@ export default function LandingPage() {
                     <h3>Lightning Fast</h3>
                     <p>Built with Next.js and Framer Motion for a buttery smooth experience.</p>
                 </div>
-            </section>
+            </section >
 
-            <style jsx>{`
+    <style jsx>{`
         .landing-page {
           min-height: 100vh;
           background: var(--bg-dark);
@@ -358,6 +344,6 @@ export default function LandingPage() {
           .hero-visual { display: none; }
         }
       `}</style>
-        </div>
+        </div >
     );
 }
