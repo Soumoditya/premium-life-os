@@ -1,72 +1,67 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import Header from "@/components/Header";
 
 export default function SettingsPage() {
-    return (
-        <div className="settings-page">
-            <Header title="Settings" />
+  const [apiKey, setApiKey] = useState("");
+  const [saved, setSaved] = useState(false);
 
-            <div className="settings-container animate-slide-up">
-                <section className="settings-section glass-panel">
-                    <h2>Profile</h2>
-                    <div className="profile-form">
-                        <div className="form-group">
-                            <label>Full Name</label>
-                            <input type="text" defaultValue="Mrinal" />
-                        </div>
-                        <div className="form-group">
-                            <label>Email</label>
-                            <input type="email" defaultValue="mrinal@example.com" />
-                        </div>
-                        <div className="form-group">
-                            <label>Bio</label>
-                            <textarea defaultValue="Pro User | Digital Nomad" />
-                        </div>
-                        <button className="btn-primary">Save Changes</button>
-                    </div>
-                </section>
+  useEffect(() => {
+    const key = localStorage.getItem("gemini_api_key");
+    if (key) setApiKey(key);
+  }, []);
 
-                <section className="settings-section glass-panel delay-100">
-                    <h2>Preferences</h2>
-                    <div className="preferences-list">
-                        <div className="pref-item">
-                            <div className="pref-info">
-                                <h4>Dark Mode</h4>
-                                <p>Always on for premium feel</p>
-                            </div>
-                            <label className="switch">
-                                <input type="checkbox" checked readOnly />
-                                <span className="slider round"></span>
-                            </label>
-                        </div>
+  const saveSettings = () => {
+    localStorage.setItem("gemini_api_key", apiKey);
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2000);
+  };
 
-                        <div className="pref-item">
-                            <div className="pref-info">
-                                <h4>Notifications</h4>
-                                <p>Receive updates and alerts</p>
-                            </div>
-                            <label className="switch">
-                                <input type="checkbox" defaultChecked />
-                                <span className="slider round"></span>
-                            </label>
-                        </div>
+  return (
+    <div className="settings-page">
+      <Header title="Settings" />
 
-                        <div className="pref-item">
-                            <div className="pref-info">
-                                <h4>Sound Effects</h4>
-                                <p>Play sounds on interaction</p>
-                            </div>
-                            <label className="switch">
-                                <input type="checkbox" />
-                                <span className="slider round"></span>
-                            </label>
-                        </div>
-                    </div>
-                </section>
+      <div className="settings-container animate-slide-up">
+        <section className="settings-section glass-panel">
+          <h2>🤖 AI Configuration</h2>
+          <p className="section-desc">To enable the Real AI Assistant, please enter your Google Gemini API Key.</p>
+
+          <div className="form-group">
+            <label>Google Gemini API Key</label>
+            <div className="input-wrapper">
+              <input
+                type="password"
+                value={apiKey}
+                onChange={(e) => setApiKey(e.target.value)}
+                placeholder="AIzaSy..."
+              />
             </div>
+            <p className="help-text">
+              Don't have one? <a href="https://aistudio.google.com/app/apikey" target="_blank" className="link">Get it here free</a>
+            </p>
+          </div>
 
-            <style jsx>{`
+          <button onClick={saveSettings} className="btn-primary">
+            {saved ? "Saved! ✓" : "Save API Key"}
+          </button>
+        </section>
+
+        <section className="settings-section glass-panel delay-100">
+          <h2>🎨 Appearance</h2>
+          <div className="preferences-list">
+            <div className="pref-item">
+              <div className="pref-info">
+                <h4>Glassmorphism Intensity</h4>
+                <p>Adjust the blur and transparency</p>
+              </div>
+              <input type="range" min="0" max="100" defaultValue="50" className="range-slider" />
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <style jsx>{`
         .settings-container {
           max-width: 800px;
           margin: 0 auto;
@@ -80,124 +75,67 @@ export default function SettingsPage() {
         }
 
         .settings-section h2 {
-          margin-bottom: 24px;
-          font-size: 20px;
-          border-bottom: 1px solid var(--glass-border);
-          padding-bottom: 12px;
+          margin-bottom: 8px;
+          font-size: 22px;
         }
 
-        .profile-form {
-          display: flex;
-          flex-direction: column;
-          gap: 20px;
+        .section-desc {
+          color: var(--fg-secondary);
+          margin-bottom: 24px;
+          font-size: 14px;
         }
 
         .form-group {
-          display: flex;
-          flex-direction: column;
-          gap: 8px;
+          margin-bottom: 24px;
         }
 
         .form-group label {
-          font-size: 14px;
-          color: var(--fg-secondary);
+          display: block;
+          margin-bottom: 8px;
+          font-weight: 500;
         }
 
-        .form-group input,
-        .form-group textarea {
-          background: rgba(255, 255, 255, 0.05);
+        .input-wrapper input {
+          width: 100%;
+          background: rgba(0, 0, 0, 0.2);
           border: 1px solid var(--glass-border);
+          padding: 16px;
           border-radius: var(--radius-md);
-          padding: 12px;
           color: white;
-          font-family: inherit;
+          font-family: monospace;
           outline: none;
-          transition: border-color 0.2s;
+          transition: all 0.3s;
         }
 
-        .form-group input:focus,
-        .form-group textarea:focus {
+        .input-wrapper input:focus {
           border-color: var(--accent-primary);
+          box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
         }
 
-        .form-group textarea {
-          min-height: 100px;
-          resize: vertical;
+        .help-text {
+          margin-top: 8px;
+          font-size: 13px;
+          color: var(--fg-tertiary);
         }
 
-        .preferences-list {
-          display: flex;
-          flex-direction: column;
-          gap: 24px;
+        .link {
+          color: var(--accent-primary);
+          text-decoration: underline;
+        }
+
+        .range-slider {
+          width: 150px;
+          accent-color: var(--accent-primary);
         }
 
         .pref-item {
           display: flex;
           justify-content: space-between;
           align-items: center;
-        }
-
-        .pref-info h4 {
-          margin-bottom: 4px;
-        }
-
-        .pref-info p {
-          font-size: 13px;
-          color: var(--fg-secondary);
-        }
-
-        /* Switch Toggle (Reused) */
-        .switch {
-          position: relative;
-          display: inline-block;
-          width: 50px;
-          height: 26px;
-        }
-
-        .switch input { 
-          opacity: 0;
-          width: 0;
-          height: 0;
-        }
-
-        .slider {
-          position: absolute;
-          cursor: pointer;
-          top: 0;
-          left: 0;
-          right: 0;
-          bottom: 0;
-          background-color: #3f3f46;
-          transition: .4s;
-        }
-
-        .slider:before {
-          position: absolute;
-          content: "";
-          height: 20px;
-          width: 20px;
-          left: 3px;
-          bottom: 3px;
-          background-color: white;
-          transition: .4s;
-        }
-
-        input:checked + .slider {
-          background-color: var(--accent-primary);
-        }
-
-        input:checked + .slider:before {
-          transform: translateX(24px);
-        }
-
-        .slider.round {
-          border-radius: 34px;
-        }
-
-        .slider.round:before {
-          border-radius: 50%;
+          padding: 16px 0;
+          border-bottom: 1px solid var(--glass-border);
         }
       `}</style>
-        </div>
-    );
+    </div>
+  );
 }

@@ -1,36 +1,70 @@
 "use client";
 
+import { useState } from "react";
+import { signIn } from "next-auth/react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 
 export default function LoginPage() {
-    return (
-        <div className="login-container">
-            <div className="login-card glass-panel animate-slide-up">
-                <h1 className="logo text-gradient">Life OS</h1>
-                <p className="subtitle">Your personal AI workspace</p>
+  const [form, setForm] = useState({ email: "", password: "" });
+  const [error, setError] = useState("");
+  const router = useRouter();
 
-                <div className="auth-buttons">
-                    <button className="google-btn glass-panel">
-                        <img src="https://www.google.com/favicon.ico" alt="Google" width={20} height={20} />
-                        <span>Continue with Google</span>
-                    </button>
-                </div>
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const res = await signIn("credentials", {
+      redirect: false,
+      email: form.email,
+      password: form.password,
+    });
 
-                <p className="footer-text">
-                    By continuing, you agree to our Terms & Privacy Policy.
-                </p>
-            </div>
+    if (res?.error) {
+      setError("Invalid email or password");
+    } else {
+      router.push("/");
+    }
+  };
 
-            <style jsx>{`
-        .login-container {
+  return (
+    <div className="auth-container">
+      <div className="auth-card glass-panel animate-slide-up">
+        <h1 className="logo text-gradient">Life OS</h1>
+        <p className="subtitle">Welcome back</p>
+
+        {error && <div className="error-msg">{error}</div>}
+
+        <form onSubmit={handleSubmit} className="auth-form">
+          <input
+            type="email"
+            placeholder="Email"
+            value={form.email}
+            onChange={(e) => setForm({ ...form, email: e.target.value })}
+            required
+          />
+          <input
+            type="password"
+            placeholder="Password"
+            value={form.password}
+            onChange={(e) => setForm({ ...form, password: e.target.value })}
+            required
+          />
+          <button type="submit" className="btn-primary">Login</button>
+        </form>
+
+        <p className="footer-text">
+          Don't have an account? <Link href="/signup" className="link">Sign Up</Link>
+        </p>
+      </div>
+
+      <style jsx>{`
+        .auth-container {
           min-height: 100vh;
           display: flex;
           align-items: center;
           justify-content: center;
-          background: radial-gradient(circle at 50% 50%, rgba(99, 102, 241, 0.15) 0%, transparent 50%);
         }
 
-        .login-card {
+        .auth-card {
           width: 100%;
           max-width: 400px;
           padding: 40px;
@@ -40,46 +74,42 @@ export default function LoginPage() {
           text-align: center;
         }
 
-        .logo {
-          font-size: 32px;
-          margin-bottom: 8px;
-        }
+        .logo { font-size: 32px; margin-bottom: 8px; }
+        .subtitle { color: var(--fg-secondary); margin-bottom: 32px; }
 
-        .subtitle {
-          color: var(--fg-secondary);
-          margin-bottom: 32px;
-        }
-
-        .auth-buttons {
+        .auth-form {
           width: 100%;
+          display: flex;
+          flex-direction: column;
+          gap: 16px;
           margin-bottom: 24px;
         }
 
-        .google-btn {
-          width: 100%;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          gap: 12px;
+        input {
+          background: rgba(255, 255, 255, 0.05);
+          border: 1px solid var(--glass-border);
           padding: 12px;
-          background: white;
-          color: black;
-          border: none;
           border-radius: var(--radius-md);
-          font-weight: 500;
-          cursor: pointer;
-          transition: transform 0.2s;
+          color: white;
+          outline: none;
         }
 
-        .google-btn:hover {
-          transform: translateY(-2px);
+        input:focus { border-color: var(--accent-primary); }
+
+        .error-msg {
+          color: #ef4444;
+          background: rgba(239, 68, 68, 0.1);
+          padding: 10px;
+          border-radius: var(--radius-sm);
+          margin-bottom: 16px;
+          width: 100%;
+          font-size: 14px;
         }
 
-        .footer-text {
-          font-size: 12px;
-          color: var(--fg-tertiary);
-        }
+        .footer-text { font-size: 14px; color: var(--fg-secondary); }
+        .link { color: var(--accent-primary); text-decoration: none; }
+        .link:hover { text-decoration: underline; }
       `}</style>
-        </div>
-    );
+    </div>
+  );
 }

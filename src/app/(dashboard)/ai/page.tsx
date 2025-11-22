@@ -2,125 +2,165 @@
 
 import { useState, useRef, useEffect } from "react";
 import Header from "@/components/Header";
+import ReactMarkdown from 'react-markdown';
 
 interface Message {
-    id: string;
-    role: 'user' | 'ai';
-    content: string;
-    timestamp: Date;
+  id: string;
+  role: 'user' | 'model';
+  content: string;
+  timestamp: Date;
 }
 
 export default function AIPage() {
-    const [messages, setMessages] = useState<Message[]>([
-        {
-            id: '1',
-            role: 'ai',
-            content: "Hello! I'm your personal AI assistant. How can I help you today?",
-            timestamp: new Date()
-        }
-    ]);
-    const [input, setInput] = useState("");
-    const [isTyping, setIsTyping] = useState(false);
-    const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [input, setInput] = useState("");
+  const [isTyping, setIsTyping] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
-    const scrollToBottom = () => {
-        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  useEffect(() => {
+    fetchHistory();
+  }, []);
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  const fetchHistory = async () => {
+    const res = await fetch("/api/ai");
+    if (res.ok) {
+      const data = await res.json();
+      setMessages(data.map((m: any) => ({
+        id: m.id,
+        role: m.role,
+        content: m.content,
+        timestamp: new Date(m.createdAt)
+      })));
+    }
+  };
+
+  const saveMessage = async (role: 'user' | 'model', content: string) => {
+    await fetch("/api/ai", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ role, content })
+    });
+  };
+
+  const handleSend = async () => {
+    if (!input.trim()) return;
+
+    const apiKey = localStorage.getItem("gemini_api_key");
+    if (!apiKey) {
+      alert("Please set your Google Gemini API Key in Settings first!");
+      return;
+    }
+
+    const content = input;
+    setInput("");
+
+    // Optimistic update
+    const userMsg: Message = {
+      id: Date.now().toString(),
+      role: 'user',
+      content,
+      timestamp: new Date()
     };
+    setMessages(prev => [...prev, userMsg]);
+    setIsTyping(true);
 
-    useEffect(() => {
-        scrollToBottom();
-    }, [messages]);
+    // Save user message
+    saveMessage('user', content);
 
-    const handleSend = async () => {
-        if (!input.trim()) return;
+    try {
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${apiKey}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: content }] }]
+        })
+      });
 
-        const userMsg: Message = {
-            id: Date.now().toString(),
-            role: 'user',
-            content: input,
-            timestamp: new Date()
-        };
+      const data = await response.json();
 
-        setMessages(prev => [...prev, userMsg]);
-        setInput("");
-        setIsTyping(true);
+      if (data.error) {
+        throw new Error(data.error.message);
+      }
 
-        // Mock AI Response
-        setTimeout(() => {
-            const aiMsg: Message = {
-                id: (Date.now() + 1).toString(),
-                role: 'ai',
-                content: "I'm a mock AI for this demo. I can help you organize your tasks, calculate numbers, or just chat! (Real AI integration would go here)",
-                timestamp: new Date()
-            };
-            setMessages(prev => [...prev, aiMsg]);
-            setIsTyping(false);
-        }, 1500);
-    };
+      const aiResponse = data.candidates[0].content.parts[0].text;
 
-    const handleExport = () => {
-        // Simple text export for now
-        const text = messages.map(m => `${m.role.toUpperCase()}: ${m.content}`).join('\n\n');
-        const blob = new Blob([text], { type: 'text/plain' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'chat-history.txt';
-        a.click();
-    };
+      const aiMsg: Message = {
+        id: (Date.now() + 1).toString(),
+        role: 'model',
+        content: aiResponse,
+        timestamp: new Date()
+      };
+      setMessages(prev => [...prev, aiMsg]);
 
-    return (
-        <div className="ai-page">
-            <Header title="AI Assistant" />
+      // Save AI message
+      saveMessage('model', aiResponse);
 
-            <div className="chat-container glass-panel animate-slide-up">
-                <div className="chat-header">
-                    <div className="ai-status">
-                        <span className="status-dot"></span>
-                        Online
-                    </div>
-                    <button onClick={handleExport} className="btn-ghost">
-                        Export Chat
-                    </button>
-                </div>
+    } catch (error) {
+      const errorMsg: Message = {
+        id: (Date.now() + 1).toString(),
+        role: 'model',
+        content: `**Error:** ${error instanceof Error ? error.message : 'Failed to fetch response'}. Please check your API Key.`,
+        timestamp: new Date()
+      };
+      setMessages(prev => [...prev, errorMsg]);
+    } finally {
+      setIsTyping(false);
+    }
+  };
 
-                <div className="messages-area">
-                    {messages.map((msg) => (
-                        <div key={msg.id} className={`message ${msg.role}`}>
-                            <div className="message-bubble">
-                                {msg.content}
-                            </div>
-                            <span className="timestamp">
-                                {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                            </span>
-                        </div>
-                    ))}
-                    {isTyping && (
-                        <div className="message ai">
-                            <div className="message-bubble typing">
-                                <span>.</span><span>.</span><span>.</span>
-                            </div>
-                        </div>
-                    )}
-                    <div ref={messagesEndRef} />
-                </div>
+  return (
+    <div className="ai-page">
+      <Header title="AI Assistant (Gemini Pro)" />
 
-                <div className="input-area">
-                    <input
-                        type="text"
-                        value={input}
-                        onChange={(e) => setInput(e.target.value)}
-                        onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-                        placeholder="Type a message..."
-                        className="chat-input"
-                    />
-                    <button onClick={handleSend} className="send-btn btn-primary">
-                        Send
-                    </button>
-                </div>
+      <div className="chat-container glass-panel animate-slide-up">
+        <div className="messages-area">
+          {messages.map((msg) => (
+            <div key={msg.id} className={`message ${msg.role}`}>
+              <div className="message-bubble">
+                {msg.role === 'model' ? (
+                  <div className="markdown-content">
+                    <ReactMarkdown>{msg.content}</ReactMarkdown>
+                  </div>
+                ) : (
+                  msg.content
+                )}
+              </div>
             </div>
+          ))}
+          {isTyping && (
+            <div className="message model">
+              <div className="message-bubble typing">
+                <span>●</span><span>●</span><span>●</span>
+              </div>
+            </div>
+          )}
+          <div ref={messagesEndRef} />
+        </div>
 
-            <style jsx>{`
+        <div className="input-area">
+          <input
+            type="text"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleSend()}
+            placeholder="Ask anything..."
+            className="chat-input"
+          />
+          <button onClick={handleSend} className="send-btn btn-primary">
+            Send
+          </button>
+        </div>
+      </div>
+
+      <style jsx>{`
         .ai-page {
           height: calc(100vh - 140px);
           display: flex;
@@ -132,30 +172,7 @@ export default function AIPage() {
           display: flex;
           flex-direction: column;
           overflow: hidden;
-        }
-
-        .chat-header {
-          padding: 16px 24px;
-          border-bottom: 1px solid var(--glass-border);
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-        }
-
-        .ai-status {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          font-size: 14px;
-          color: #4ade80;
-        }
-
-        .status-dot {
-          width: 8px;
-          height: 8px;
-          background: #4ade80;
-          border-radius: 50%;
-          box-shadow: 0 0 10px rgba(74, 222, 128, 0.5);
+          background: rgba(0, 0, 0, 0.3);
         }
 
         .messages-area {
@@ -164,29 +181,29 @@ export default function AIPage() {
           padding: 24px;
           display: flex;
           flex-direction: column;
-          gap: 20px;
+          gap: 24px;
         }
 
         .message {
           display: flex;
           flex-direction: column;
-          max-width: 70%;
+          max-width: 80%;
         }
 
         .message.user {
           align-self: flex-end;
-          align-items: flex-end;
         }
 
-        .message.ai {
+        .message.model {
           align-self: flex-start;
         }
 
         .message-bubble {
-          padding: 12px 16px;
-          border-radius: 16px;
+          padding: 16px 20px;
+          border-radius: 20px;
           font-size: 15px;
-          line-height: 1.5;
+          line-height: 1.6;
+          box-shadow: 0 4px 15px rgba(0,0,0,0.1);
         }
 
         .message.user .message-bubble {
@@ -195,46 +212,43 @@ export default function AIPage() {
           border-bottom-right-radius: 4px;
         }
 
-        .message.ai .message-bubble {
-          background: rgba(255, 255, 255, 0.1);
+        .message.model .message-bubble {
+          background: rgba(255, 255, 255, 0.08);
           color: var(--fg-primary);
           border-bottom-left-radius: 4px;
-        }
-
-        .timestamp {
-          font-size: 11px;
-          color: var(--fg-tertiary);
-          margin-top: 4px;
-          padding: 0 4px;
+          border: 1px solid var(--glass-border);
         }
 
         .input-area {
-          padding: 20px;
+          padding: 24px;
           border-top: 1px solid var(--glass-border);
           display: flex;
-          gap: 12px;
+          gap: 16px;
+          background: rgba(0, 0, 0, 0.2);
         }
 
         .chat-input {
           flex: 1;
           background: rgba(255, 255, 255, 0.05);
           border: 1px solid var(--glass-border);
-          border-radius: var(--radius-md);
-          padding: 12px 16px;
+          border-radius: var(--radius-full);
+          padding: 14px 24px;
           color: white;
           outline: none;
-          transition: border-color 0.2s;
+          transition: all 0.2s;
         }
 
         .chat-input:focus {
+          background: rgba(255, 255, 255, 0.1);
           border-color: var(--accent-primary);
         }
 
         .typing span {
           animation: blink 1.4s infinite both;
           margin: 0 2px;
+          color: var(--fg-secondary);
         }
-
+        
         .typing span:nth-child(2) { animation-delay: 0.2s; }
         .typing span:nth-child(3) { animation-delay: 0.4s; }
 
@@ -244,6 +258,6 @@ export default function AIPage() {
           100% { opacity: 0.2; }
         }
       `}</style>
-        </div>
-    );
+    </div>
+  );
 }
