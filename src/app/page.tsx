@@ -31,7 +31,7 @@ export default function LandingPage() {
         >
           <div className="badge">
             <span className="badge-dot"></span>
-            v3.0 Ultra Premium
+            v3.1 Ultra Premium (Live)
           </div>
           <h1>
             Organize your life <br />
