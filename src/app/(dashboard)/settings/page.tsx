@@ -59,6 +59,29 @@ export default function SettingsPage() {
             </div>
           </div>
         </section>
+
+        <section className="settings-section glass-panel delay-200">
+          <h2>💾 Data Management</h2>
+          <div className="preferences-list">
+            <div className="pref-item">
+              <div className="pref-info">
+                <h4>Clear All Chat History</h4>
+                <p className="text-red-400">This action cannot be undone.</p>
+              </div>
+              <button
+                onClick={async () => {
+                  if (confirm("Are you sure you want to delete all chat history?")) {
+                    await fetch("/api/ai/clear", { method: "DELETE" });
+                    alert("History cleared!");
+                  }
+                }}
+                className="px-4 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-lg transition-colors text-sm font-medium border border-red-500/20"
+              >
+                Delete All
+              </button>
+            </div>
+          </div>
+        </section>
       </div>
 
       <style jsx>{`

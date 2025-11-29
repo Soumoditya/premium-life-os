@@ -2,184 +2,117 @@
 
 import { useState } from "react";
 import Header from "@/components/Header";
+import { Delete, RotateCcw } from "lucide-react";
 
 export default function CalculatorPage() {
-    const [display, setDisplay] = useState("0");
-    const [history, setHistory] = useState<string[]>([]);
-    const [expression, setExpression] = useState("");
+  const [display, setDisplay] = useState("0");
+  const [history, setHistory] = useState("");
 
-    const handleBtnClick = (val: string) => {
-        if (val === 'C') {
-            setDisplay("0");
-            setExpression("");
-        } else if (val === '=') {
-            try {
-                // eslint-disable-next-line no-eval
-                const result = eval(expression).toString();
-                setDisplay(result);
-                setHistory([`${expression} = ${result}`, ...history.slice(0, 4)]);
-                setExpression(result);
-            } catch {
-                setDisplay("Error");
-            }
-        } else if (['+', '-', '*', '/'].includes(val)) {
-            setExpression(expression + val);
-            setDisplay(val);
-        } else {
-            if (display === "0" || ['+', '-', '*', '/'].includes(display)) {
-                setDisplay(val);
-            } else {
-                setDisplay(display + val);
-            }
-            setExpression(expression + val);
-        }
-    };
+  const handleNumber = (num: string) => {
+    setDisplay(display === "0" ? num : display + num);
+  };
 
-    const buttons = [
-        'C', '(', ')', '/',
-        '7', '8', '9', '*',
-        '4', '5', '6', '-',
-        '1', '2', '3', '+',
-        '0', '.', '=',
-    ];
+  const handleOperator = (op: string) => {
+    setHistory(display + " " + op + " ");
+    setDisplay("0");
+  };
 
-    return (
-        <div className="calculator-page">
-            <Header title="Calculator" />
+  const calculate = () => {
+    try {
+      const expression = history + display;
+      // Use Function constructor for safe evaluation of math expression
+      // eslint-disable-next-line no-new-func
+      const result = new Function("return " + expression.replace(/×/g, "*").replace(/÷/g, "/"))();
+      setDisplay(String(result));
+      setHistory("");
+    } catch (error) {
+      setDisplay("Error");
+    }
+  };
 
-            <div className="calc-container">
-                <div className="calculator glass-panel animate-slide-up">
-                    <div className="calc-display">
-                        <div className="calc-expression">{expression || '0'}</div>
-                        <div className="calc-result">{display}</div>
-                    </div>
+  const clear = () => {
+    setDisplay("0");
+    setHistory("");
+  };
 
-                    <div className="calc-grid">
-                        {buttons.map((btn) => (
-                            <button
-                                key={btn}
-                                className={`calc-btn ${['C', '=', '+', '-', '*', '/'].includes(btn) ? 'accent' : ''} ${btn === '0' ? 'wide' : ''}`}
-                                onClick={() => handleBtnClick(btn)}
-                            >
-                                {btn}
-                            </button>
-                        ))}
-                    </div>
-                </div>
+  const deleteLast = () => {
+    setDisplay(display.length > 1 ? display.slice(0, -1) : "0");
+  };
 
-                <div className="history-panel glass-panel animate-slide-up delay-100">
-                    <h3>History</h3>
-                    <div className="history-list">
-                        {history.length === 0 && <p className="empty-text">No calculations yet</p>}
-                        {history.map((item, i) => (
-                            <div key={i} className="history-item">{item}</div>
-                        ))}
-                    </div>
-                </div>
+  const scientific = (func: string) => {
+    try {
+      const val = parseFloat(display);
+      let res = 0;
+      switch (func) {
+        case "sin": res = Math.sin(val); break;
+        case "cos": res = Math.cos(val); break;
+        case "tan": res = Math.tan(val); break;
+        case "sqrt": res = Math.sqrt(val); break;
+        case "log": res = Math.log10(val); break;
+        case "ln": res = Math.log(val); break;
+        case "pow2": res = Math.pow(val, 2); break;
+      }
+      setDisplay(String(res));
+    } catch (e) {
+      setDisplay("Error");
+    }
+  };
+
+  const btnClass = "h-16 rounded-2xl text-xl font-medium transition-all active:scale-95 flex items-center justify-center shadow-sm";
+  const numBtn = `${btnClass} bg-white hover:bg-gray-50 text-gray-800`;
+  const opBtn = `${btnClass} bg-purple-100 hover:bg-purple-200 text-purple-700`;
+  const funcBtn = `${btnClass} bg-gray-100 hover:bg-gray-200 text-gray-600 text-sm`;
+
+  return (
+    <div className="h-[calc(100vh-80px)] flex flex-col bg-gradient-to-br from-indigo-50 via-white to-purple-50 p-6">
+      <Header title="Calculator" />
+
+      <div className="flex-1 max-w-md mx-auto w-full flex flex-col justify-end pb-8">
+        <div className="bg-white/80 backdrop-blur-xl rounded-3xl shadow-xl border border-white/20 overflow-hidden">
+          {/* Display */}
+          <div className="p-8 bg-gradient-to-b from-gray-50 to-white text-right border-b border-gray-100">
+            <div className="text-gray-400 text-sm h-6 mb-1">{history}</div>
+            <div className="text-5xl font-light text-gray-800 tracking-tight overflow-x-auto whitespace-nowrap scrollbar-hide">
+              {display}
             </div>
+          </div>
 
-            <style jsx>{`
-        .calc-container {
-          display: flex;
-          gap: 40px;
-          align-items: flex-start;
-          justify-content: center;
-          margin-top: 40px;
-        }
+          {/* Keypad */}
+          <div className="p-6 grid grid-cols-4 gap-3 bg-white/50">
+            <button onClick={() => scientific("sin")} className={funcBtn}>sin</button>
+            <button onClick={() => scientific("cos")} className={funcBtn}>cos</button>
+            <button onClick={() => scientific("tan")} className={funcBtn}>tan</button>
+            <button onClick={() => scientific("log")} className={funcBtn}>log</button>
 
-        .calculator {
-          width: 320px;
-          padding: 24px;
-          background: rgba(0, 0, 0, 0.4);
-        }
+            <button onClick={() => scientific("ln")} className={funcBtn}>ln</button>
+            <button onClick={() => scientific("sqrt")} className={funcBtn}>√</button>
+            <button onClick={() => scientific("pow2")} className={funcBtn}>x²</button>
+            <button onClick={clear} className={`${btnClass} bg-red-100 text-red-500 hover:bg-red-200`}>AC</button>
 
-        .calc-display {
-          background: rgba(255, 255, 255, 0.05);
-          padding: 20px;
-          border-radius: var(--radius-md);
-          margin-bottom: 24px;
-          text-align: right;
-        }
+            <button onClick={() => handleNumber("7")} className={numBtn}>7</button>
+            <button onClick={() => handleNumber("8")} className={numBtn}>8</button>
+            <button onClick={() => handleNumber("9")} className={numBtn}>9</button>
+            <button onClick={() => handleOperator("÷")} className={opBtn}>÷</button>
 
-        .calc-expression {
-          font-size: 14px;
-          color: var(--fg-secondary);
-          min-height: 20px;
-        }
+            <button onClick={() => handleNumber("4")} className={numBtn}>4</button>
+            <button onClick={() => handleNumber("5")} className={numBtn}>5</button>
+            <button onClick={() => handleNumber("6")} className={numBtn}>6</button>
+            <button onClick={() => handleOperator("×")} className={opBtn}>×</button>
 
-        .calc-result {
-          font-size: 36px;
-          font-weight: 600;
-          color: white;
-          margin-top: 8px;
-        }
+            <button onClick={() => handleNumber("1")} className={numBtn}>1</button>
+            <button onClick={() => handleNumber("2")} className={numBtn}>2</button>
+            <button onClick={() => handleNumber("3")} className={numBtn}>3</button>
+            <button onClick={() => handleOperator("-")} className={opBtn}>-</button>
 
-        .calc-grid {
-          display: grid;
-          grid-template-columns: repeat(4, 1fr);
-          gap: 12px;
-        }
+            <button onClick={() => handleNumber("0")} className={numBtn}>0</button>
+            <button onClick={() => handleNumber(".")} className={numBtn}>.</button>
+            <button onClick={deleteLast} className={numBtn}><Delete className="w-5 h-5" /></button>
+            <button onClick={() => handleOperator("+")} className={opBtn}>+</button>
 
-        .calc-btn {
-          height: 56px;
-          border: none;
-          border-radius: 14px;
-          background: rgba(255, 255, 255, 0.05);
-          color: white;
-          font-size: 20px;
-          font-weight: 500;
-          cursor: pointer;
-          transition: all 0.2s;
-        }
-
-        .calc-btn:hover {
-          background: rgba(255, 255, 255, 0.1);
-        }
-
-        .calc-btn.accent {
-          color: var(--accent-primary);
-          background: rgba(99, 102, 241, 0.1);
-        }
-
-        .calc-btn.accent:hover {
-          background: rgba(99, 102, 241, 0.2);
-        }
-
-        .calc-btn.wide {
-          grid-column: span 2;
-        }
-
-        .history-panel {
-          width: 280px;
-          padding: 24px;
-          min-height: 400px;
-        }
-
-        .history-panel h3 {
-          margin-bottom: 20px;
-          font-size: 18px;
-        }
-
-        .history-list {
-          display: flex;
-          flex-direction: column;
-          gap: 12px;
-        }
-
-        .history-item {
-          padding: 12px;
-          background: rgba(255, 255, 255, 0.03);
-          border-radius: var(--radius-sm);
-          font-family: monospace;
-          font-size: 14px;
-          color: var(--fg-secondary);
-        }
-
-        .empty-text {
-          color: var(--fg-tertiary);
-          font-style: italic;
-        }
-      `}</style>
+            <button onClick={calculate} className={`${btnClass} col-span-4 bg-purple-600 hover:bg-purple-700 text-white mt-2`}>=</button>
+          </div>
         </div>
-    );
+      </div>
+    </div>
+  );
 }

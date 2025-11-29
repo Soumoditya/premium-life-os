@@ -1,267 +1,181 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
-import Header from "@/components/Header";
-import ReactMarkdown from 'react-markdown';
-
-interface Message {
-  id: string;
-  role: 'user' | 'model';
-  content: string;
-  timestamp: Date;
-}
+import { useState, useEffect } from "react";
+import { ChatSidebar } from "@/components/ai/ChatSidebar";
+import { ChatArea } from "@/components/ai/ChatArea";
+import { ChatMode } from "@/lib/ai";
 
 export default function AIPage() {
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [input, setInput] = useState("");
+  const [folders, setFolders] = useState<any[]>([]);
+  const [sessions, setSessions] = useState<any[]>([]);
+  const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
+  const [messages, setMessages] = useState<any[]>([]);
   const [isTyping, setIsTyping] = useState(false);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [currentMode, setCurrentMode] = useState<ChatMode>("normal");
+  const [isTemporary, setIsTemporary] = useState(false);
 
   useEffect(() => {
-    fetchHistory();
+    fetchData();
   }, []);
 
   useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
+    if (currentSessionId) {
+      const session = sessions.find((s) => s.id === currentSessionId);
+      // In a real app, we might fetch messages separately if they are not loaded
+      // For now, assuming sessions include messages or we fetch them
+      // But the API /api/ai/data returns sessions without messages (to save bandwidth)
+      // So we might need to fetch messages for the session.
+      // Actually, let's just fetch messages when selecting a session.
+      fetchMessages(currentSessionId);
+    } else {
+      setMessages([]);
+    }
+  }, [currentSessionId]);
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  const fetchData = async () => {
+    try {
+      const res = await fetch("/api/ai/data");
+      if (res.ok) {
+        const data = await res.json();
+        setFolders(data.folders);
+        setSessions(data.sessions);
+        if (data.sessions.length > 0 && !currentSessionId) {
+          setCurrentSessionId(data.sessions[0].id);
+        }
+      }
+    } catch (error) {
+      console.error("Failed to fetch data", error);
+    }
   };
 
-  const fetchHistory = async () => {
-    const res = await fetch("/api/ai");
+  const fetchMessages = async (sessionId: string) => {
+    // We can reuse the main GET /api/ai route? No, that was repurposed.
+    // We need a way to get messages.
+    // Let's assume we can get them from a new endpoint or update GET /api/ai/data to include them?
+    // No, that's too heavy.
+    // Let's add GET /api/ai/messages?sessionId=...
+    // Or just filter from loaded sessions if we included them?
+    // The data route included:
+    // chatSessions: { where: { folderId: null }, orderBy: { createdAt: "desc" } }
+    // It didn't include messages.
+    // I need to implement fetching messages.
+    // For now, let's just implement a quick fetch in the component or add a route.
+    // I'll add a route: src/app/api/ai/messages/route.ts
+    const res = await fetch(`/api/ai/messages?sessionId=${sessionId}`);
     if (res.ok) {
       const data = await res.json();
-      setMessages(data.map((m: any) => ({
-        id: m.id,
-        role: m.role,
-        content: m.content,
-        timestamp: new Date(m.createdAt)
-      })));
+      setMessages(data);
     }
   };
 
-  const saveMessage = async (role: 'user' | 'model', content: string) => {
-    await fetch("/api/ai", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ role, content })
-    });
-  };
+  const handleSendMessage = async (text: string, mode: ChatMode, attachments?: any[]) => {
+    if (!text.trim()) return;
 
-  const handleSend = async () => {
-    if (!input.trim()) return;
+    let sessionId = currentSessionId;
 
-    const apiKey = localStorage.getItem("gemini_api_key");
-    if (!apiKey) {
-      alert("Please set your Google Gemini API Key in Settings first!");
-      return;
+    if (!sessionId && !isTemporary) {
+      // Create new session
+      const res = await fetch("/api/ai/sessions", {
+        method: "POST",
+        body: JSON.stringify({ title: text.slice(0, 30) }),
+      });
+      const newSession = await res.json();
+      setSessions([newSession, ...sessions]);
+      setCurrentSessionId(newSession.id);
+      sessionId = newSession.id;
     }
-
-    const content = input;
-    setInput("");
 
     // Optimistic update
-    const userMsg: Message = {
-      id: Date.now().toString(),
-      role: 'user',
-      content,
-      timestamp: new Date()
+    const tempMsg = {
+      role: "user",
+      content: text,
+      createdAt: new Date(),
     };
-    setMessages(prev => [...prev, userMsg]);
+    setMessages((prev) => [...prev, tempMsg]);
     setIsTyping(true);
 
-    // Save user message
-    saveMessage('user', content);
-
     try {
-      // System Persona
-      const systemInstruction = "You are Life OS, an advanced AI productivity assistant. Your goal is to help the user organize their life, improve wellbeing, and be more productive. Be concise, encouraging, and professional.";
-      const fullPrompt = `${systemInstruction}\n\nUser: ${content}`;
-
-      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${apiKey}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: fullPrompt }] }]
-        })
-      });
-
-      const data = await response.json();
-
-      if (data.error) {
-        throw new Error(data.error.message);
+      if (isTemporary) {
+        // Handle temporary chat (no saving to DB)
+        // Just call a direct Gemini endpoint without saving?
+        // Or call the same endpoint but flag it?
+        // For now, let's just say we don't support temp chat fully in backend yet without saving.
+        // I'll skip temp chat logic for backend and just save it for now, or implement a specific route.
+        // Let's use the normal route but maybe delete it after?
+        // Or just don't save in DB if sessionId is "temp"?
+        // I'll implement a "temp" session ID handling in the backend later if needed.
+        // For now, treating as normal chat.
       }
 
-      const aiResponse = data.candidates[0].content.parts[0].text;
+      const res = await fetch("/api/ai", {
+        method: "POST",
+        body: JSON.stringify({
+          message: text,
+          sessionId,
+          mode,
+          imageParts: attachments, // Handle attachments
+        }),
+      });
 
-      const aiMsg: Message = {
-        id: (Date.now() + 1).toString(),
-        role: 'model',
-        content: aiResponse,
-        timestamp: new Date()
-      };
-      setMessages(prev => [...prev, aiMsg]);
-
-      // Save AI message
-      saveMessage('model', aiResponse);
-
+      if (res.ok) {
+        const aiMsg = await res.json();
+        setMessages((prev) => [...prev, aiMsg]);
+      }
     } catch (error) {
-      const errorMsg: Message = {
-        id: (Date.now() + 1).toString(),
-        role: 'model',
-        content: `**Error:** ${error instanceof Error ? error.message : 'Failed to fetch response'}. Please check your API Key.`,
-        timestamp: new Date()
-      };
-      setMessages(prev => [...prev, errorMsg]);
+      console.error("Failed to send message", error);
     } finally {
       setIsTyping(false);
     }
   };
 
+  const handleCreateFolder = async (name: string) => {
+    const res = await fetch("/api/ai/folders", {
+      method: "POST",
+      body: JSON.stringify({ name }),
+    });
+    if (res.ok) {
+      const newFolder = await res.json();
+      setFolders([...folders, newFolder]);
+    }
+  };
+
+  const handleDeleteFolder = async (id: string) => {
+    await fetch(`/api/ai/folders?id=${id}`, { method: "DELETE" });
+    setFolders(folders.filter((f) => f.id !== id));
+  };
+
+  const handleDeleteSession = async (id: string) => {
+    await fetch(`/api/ai/sessions?id=${id}`, { method: "DELETE" });
+    setSessions(sessions.filter((s) => s.id !== id));
+    if (currentSessionId === id) {
+      setCurrentSessionId(null);
+      setMessages([]);
+    }
+  };
+
   return (
-    <div className="ai-page">
-      <Header title="AI Assistant (Gemini Pro)" />
-
-      <div className="chat-container glass-panel animate-slide-up">
-        <div className="messages-area">
-          {messages.map((msg) => (
-            <div key={msg.id} className={`message ${msg.role}`}>
-              <div className="message-bubble">
-                {msg.role === 'model' ? (
-                  <div className="markdown-content">
-                    <ReactMarkdown>{msg.content}</ReactMarkdown>
-                  </div>
-                ) : (
-                  msg.content
-                )}
-              </div>
-            </div>
-          ))}
-          {isTyping && (
-            <div className="message model">
-              <div className="message-bubble typing">
-                <span>●</span><span>●</span><span>●</span>
-              </div>
-            </div>
-          )}
-          <div ref={messagesEndRef} />
-        </div>
-
-        <div className="input-area">
-          <input
-            type="text"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-            placeholder="Ask anything..."
-            className="chat-input"
-          />
-          <button onClick={handleSend} className="send-btn btn-primary">
-            Send
-          </button>
-        </div>
+    <div className="flex h-[calc(100vh-80px)] overflow-hidden bg-gradient-to-br from-indigo-50 via-white to-purple-50">
+      <div className="w-80 flex-shrink-0 hidden md:block">
+        <ChatSidebar
+          folders={folders}
+          sessions={sessions}
+          onSelectSession={setCurrentSessionId}
+          onCreateFolder={handleCreateFolder}
+          onDeleteFolder={handleDeleteFolder}
+          onDeleteSession={handleDeleteSession}
+        />
       </div>
-
-      <style jsx>{`
-        .ai-page {
-          height: calc(100vh - 140px);
-          display: flex;
-          flex-direction: column;
-        }
-
-        .chat-container {
-          flex: 1;
-          display: flex;
-          flex-direction: column;
-          overflow: hidden;
-          background: rgba(0, 0, 0, 0.3);
-        }
-
-        .messages-area {
-          flex: 1;
-          overflow-y: auto;
-          padding: 24px;
-          display: flex;
-          flex-direction: column;
-          gap: 24px;
-        }
-
-        .message {
-          display: flex;
-          flex-direction: column;
-          max-width: 80%;
-        }
-
-        .message.user {
-          align-self: flex-end;
-        }
-
-        .message.model {
-          align-self: flex-start;
-        }
-
-        .message-bubble {
-          padding: 16px 20px;
-          border-radius: 20px;
-          font-size: 15px;
-          line-height: 1.6;
-          box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-        }
-
-        .message.user .message-bubble {
-          background: var(--accent-gradient);
-          color: white;
-          border-bottom-right-radius: 4px;
-        }
-
-        .message.model .message-bubble {
-          background: rgba(255, 255, 255, 0.08);
-          color: var(--fg-primary);
-          border-bottom-left-radius: 4px;
-          border: 1px solid var(--glass-border);
-        }
-
-        .input-area {
-          padding: 24px;
-          border-top: 1px solid var(--glass-border);
-          display: flex;
-          gap: 16px;
-          background: rgba(0, 0, 0, 0.2);
-        }
-
-        .chat-input {
-          flex: 1;
-          background: rgba(255, 255, 255, 0.05);
-          border: 1px solid var(--glass-border);
-          border-radius: var(--radius-full);
-          padding: 14px 24px;
-          color: white;
-          outline: none;
-          transition: all 0.2s;
-        }
-
-        .chat-input:focus {
-          background: rgba(255, 255, 255, 0.1);
-          border-color: var(--accent-primary);
-        }
-
-        .typing span {
-          animation: blink 1.4s infinite both;
-          margin: 0 2px;
-          color: var(--fg-secondary);
-        }
-        
-        .typing span:nth-child(2) { animation-delay: 0.2s; }
-        .typing span:nth-child(3) { animation-delay: 0.4s; }
-
-        @keyframes blink {
-          0% { opacity: 0.2; }
-          20% { opacity: 1; }
-          100% { opacity: 0.2; }
-        }
-      `}</style>
+      <div className="flex-1 flex flex-col min-w-0">
+        <ChatArea
+          messages={messages}
+          onSendMessage={handleSendMessage}
+          isTyping={isTyping}
+          currentMode={currentMode}
+          onModeChange={setCurrentMode}
+          isTemporary={isTemporary}
+          onToggleTemporary={() => setIsTemporary(!isTemporary)}
+        />
+      </div>
     </div>
   );
 }

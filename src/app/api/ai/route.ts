@@ -1,53 +1,58 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-
-export async function GET() {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.email) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
-    // Get the most recent session or create one
-    let chatSession = await prisma.chatSession.findFirst({
-        where: { user: { email: session.user.email } },
-        orderBy: { createdAt: 'desc' },
-        include: { messages: true }
-    });
-
-    if (!chatSession) {
-        chatSession = await prisma.chatSession.create({
-            data: {
-                title: "General Chat",
-                user: { connect: { email: session.user.email } }
-            },
-            include: { messages: true }
-        });
-    }
-
-    return NextResponse.json(chatSession.messages);
-}
+import { sendMessageToGemini } from "@/lib/ai";
 
 export async function POST(req: Request) {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.email) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
-    const { role, content } = await req.json();
-
-    // Get the most recent session
-    const chatSession = await prisma.chatSession.findFirst({
-        where: { user: { email: session.user.email } },
-        orderBy: { createdAt: 'desc' }
-    });
-
-    if (!chatSession) return NextResponse.json({ error: "No session found" }, { status: 404 });
-
-    const message = await prisma.chatMessage.create({
-        data: {
-            role,
-            content,
-            session: { connect: { id: chatSession.id } }
+    try {
+        const session = await getServerSession(authOptions);
+        if (!session?.user?.email) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
-    });
 
-    return NextResponse.json(message);
+        const { message, sessionId, mode, imageParts } = await req.json();
+
+        if (!sessionId) {
+            return NextResponse.json({ error: "Session ID required" }, { status: 400 });
+        }
+
+        // 1. Save User Message
+        await prisma.chatMessage.create({
+            data: {
+                role: "user",
+                content: message,
+                sessionId,
+            },
+        });
+
+        // 2. Fetch History
+        const history = await prisma.chatMessage.findMany({
+            where: { sessionId },
+            orderBy: { createdAt: "asc" },
+            take: 20, // Context window
+        });
+
+        const formattedHistory = history.map((h: { role: string; content: string }) => ({
+            role: h.role as "user" | "model",
+            parts: h.content,
+        }));
+
+        // 3. Call Gemini
+        const aiResponse = await sendMessageToGemini(message, formattedHistory, mode, imageParts);
+
+        // 4. Save AI Message
+        const savedAiMessage = await prisma.chatMessage.create({
+            data: {
+                role: "model",
+                content: aiResponse,
+                sessionId,
+            },
+        });
+
+        return NextResponse.json(savedAiMessage);
+    } catch (error) {
+        console.error("AI Error:", error);
+        return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+    }
 }
